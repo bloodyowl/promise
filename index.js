@@ -6,7 +6,7 @@ var promise = module.exports = klass.extend({
   PENDING : 0,
   FULFILLED : 1,
   REJECTED : 2,
-  EXECUTED : 4,
+  DONE : 1 | 2,
   status : 0,
   _isPromise : 1,
   constructor : function(fn){
