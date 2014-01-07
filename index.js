@@ -1,8 +1,6 @@
 var klass = require("bloody-class")
   , immediate = require("bloody-immediate")
   , callbacks = require("./lib/callbacks")
-  , _isPrototypeOf = {}.isPrototypeOf
-  , _hasOwnProperty = {}.hasOwnProperty
   
 var promise = module.exports = klass.extend({
   PENDING : 0,
