@@ -52,5 +52,35 @@ var promise = module.exports = klass.extend({
     var rejected = promise.create()
     rejected.reject(reason)
     return rejected
+  },
+  all : function(array){
+    var index = -1
+      , length = array.length
+      , results = Array(length)
+      , returnedPromise = promise.create()
+    
+    function failAll(reason){
+      returnedPromise.reject(reason)
+    }
+    
+    function check(){
+      var length = results.length
+      while(--length > -1) {
+        if(!(length in results)) return
+      }
+      returnedPromise.fulfill(results)
+    }
+    
+    while(++index < length) {
+      (function(any, index){
+        promise.from(any)
+          .then(function(value){
+            results[index] = value
+            check()
+          }, failAll)
+      })(array[index], index)
+    }
+    
+    return returnedPromise
   }
 })

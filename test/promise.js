@@ -104,3 +104,39 @@ tape("promise", function(test){
   z += "1"
 
 })
+
+
+tape("promise.all", function(test){
+  
+  test.plan(4)
+  
+  var p = promise.create()
+    , r = promise.create()
+    , q = promise.create()
+    , all = promise.all([1, p, r])
+    , allReject = promise.all([q])
+  
+  p.fulfill(2)
+  
+  setTimeout(function(){
+    r.fulfill(3)
+  }, 300)
+  
+  q.reject("nah")
+  
+  all.then(function(array){
+    test.equal(array[0], 1, "converts values to promises")
+    test.equal(array[1], 2, "binds to promises")
+    test.equal(array[2], 3, "binds to promises")
+  }, function(){
+    test.fail("shouldn't run rejectCallback")
+  })
+  
+  allReject.then(function(){
+    test.fail("shouldn't run successCallback")
+  },function(reason){
+    test.equal(reason, "nah", "runs rejectCallback")
+  })
+  
+  
+})

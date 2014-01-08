@@ -5,7 +5,7 @@
   "scripts": {
     "test": "tape test/*.js"
   },
-  "version" : "0.1.1",
+  "version" : "0.2.1",
   "dependencies": {
     "bloody-class": "~1.1.0",
     "bloody-immediate": "~0.1.0"
