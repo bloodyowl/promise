@@ -40,3 +40,8 @@ Fulfills a promise with `value`
 ### `promise.reject([reason])`
 
 Rejects a promise with `reason`
+
+### `promise.all(array) -> new promise`
+
+Creates a promise resolved when all `array` promises are fulfilled. 
+Promises in the array are converted through `promise.from`. 
