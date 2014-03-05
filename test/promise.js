@@ -107,7 +107,7 @@ tape("promise", function(test){
 
 
 tape("promise.all", function(test){
-  
+
   test.plan(4)
   
   var p = promise.create()
