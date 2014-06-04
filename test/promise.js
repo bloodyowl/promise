@@ -102,7 +102,29 @@ tape("promise", function(test){
       })
 
   z += "1"
+})
 
+tape("promise log errors", function(test){
+  if(typeof console == "undefined") {
+    test.end()
+  }
+  var warn = console.warn
+  var error = new Error("foo")
+  var thrower = function(val){
+    test.equal(val, 1)
+    throw error
+  }
+  var tester = function(message, reason){
+    test.equal(this, console)
+    test.equal(message, "bloody-promise: error thrown :")
+    test.equal(reason, error)
+    test.end()
+    console.warn = warn
+  }
+  console.warn = tester
+  var p = promise.create()
+  p.then(thrower)
+  p.fulfill(1)
 })
 
 
