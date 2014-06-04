@@ -8,7 +8,7 @@
   "scripts": {
     "test": "tape test/*.js"
   },
-  "version": "0.2.3",
+  "version": "0.3.0",
   "dependencies": {
     "bloody-class": "^1.1.0",
     "bloody-immediate": "^0.1.0"
