@@ -111,3 +111,7 @@ var promise = module.exports = klass.extend({
     return returnedPromise
   }
 })
+
+promise["catch"] = function(errorCallback){
+  return this.then(null, errorCallback)
+}

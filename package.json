@@ -8,7 +8,7 @@
   "scripts": {
     "test": "tape test/*.js"
   },
-  "version": "0.3.0",
+  "version": "0.4.0",
   "dependencies": {
     "bloody-class": "^1.1.0",
     "bloody-immediate": "^0.1.0"
@@ -20,8 +20,6 @@
     "files": "test/*.js",
     "browsers": {
       "ie": [
-        6,
-        7,
         8,
         9
       ],

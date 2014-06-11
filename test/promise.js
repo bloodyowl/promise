@@ -3,7 +3,7 @@ var tape = require("tape")
 
 tape("promise", function(test){
 
-  test.plan(17)
+  test.plan(18)
 
   var z = ""
     , p = promise.create(function(r){
@@ -99,6 +99,10 @@ tape("promise", function(test){
       }, function(reason){
         test.ok(t.status & t.REJECTED, "promise.createRejected is rejected")
         test.equal(reason, 2, "promise.createRejected gets value as reason")
+      })
+
+      t["catch"](function(reason){
+        test.equal(reason, 2, "catch shorthand")
       })
 
   z += "1"
