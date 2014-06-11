@@ -1,117 +1,193 @@
-var klass = require("bloody-class")
-var immediate = require("bloody-immediate")
-var callbacks = require("./lib/callbacks")
+var events = require("bloody-events")
+var asap = require("asap")
 
-var promise = module.exports = klass.extend({
+var map = {
+  1 : "resolve",
+  2 : "reject",
+  3 : "reject"
+}
+var identity = function(value){
+  return value
+}
+
+var createCallback = function(current, then, fn, cb){
+  return function(){
+    asap(function(){
+      var value
+      try {
+        value = fn(current.value)
+      } catch(e) {
+        then.reject(e)
+        then.emit("error", e)
+        return
+      }
+      if(value != null && typeof value.then == "function") {
+        value.then(then.accessor("resolve"), then.accessor("reject"))
+        return
+      }
+      cb(value)
+    })
+  }
+}
+
+var promise = events.extend({
   PENDING : 0,
-  FULFILLED : 1,
+  RESOLVED : 1,
   REJECTED : 2,
-  DONE : 1 | 2,
-  status : 0,
-  _isPromise : 1,
+  ERROR : 3,
   constructor : function(fn){
-    this.callbacks = callbacks.create(this)
+    var current = this
+    events.constructor.call(this)
+    this.state = this.PENDING
+    this.on("resolve", function(value){
+      current.state = current.RESOLVED
+      current.value = value
+      current.emit("done", value)
+    })
+    this.on("reject", function(value){
+      current.state = current.REJECTED
+      current.value = value
+      current.emit("done", value)
+    })
+    this.on("error", function(value){
+      current.state = current.REJECTED | current.ERROR
+      current.value = value
+      current.emit("done", value)
+    })
     if(typeof fn != "function") {
-      return this
-    }
-    this.fn = fn
-    immediate.call(fn, this)
-  },
-  then : function(fulfillCallback, errorCallback){
-    var self = this
-    var returnedPromise = promise.create()
-
-    this.callbacks.push(
-      fulfillCallback,
-      1,
-      returnedPromise
-    )
-
-    this.callbacks.push(
-      errorCallback,
-      2,
-      returnedPromise
-    )
-
-    this.callbacks.update()
-    return returnedPromise
-  },
-  fulfill : function(value){
-    var self = this
-    if(self.status) {
       return
     }
-    self[self.status = self.FULFILLED] = value
-    this.callbacks.update()
+    asap(function(){
+      try {
+        fn(
+          current.accessor("resolve"),
+          current.accessor("reject")
+        )
+      } catch(e) {}
+    })
+  },
+  destructor : function(){
+    events.destructor.call(this)
+  },
+  resolve : function(value){
+    var current = this
+    if(this.state != this.PENDING) {
+      return
+    }
+    current.value = value
+    current.emit("resolve", value)
+    current.emit("done", value)
   },
   reject : function(reason){
-    var self = this
-    if(self.status) {
+    var current = this
+    if(this.state != this.PENDING) {
       return
     }
-    self[self.status = self.REJECTED] = reason
-    this.callbacks.update()
+    current.value = reason
+    current.emit("reject", reason)
+    current.emit("done", reason)
   },
-  from : function(value){
-    var fulfilled = promise.create()
-    if(value && value._isPromise && value.then) {
-      value.then(
-        function(value){
-          fulfilled.fulfill(value)
-        },
-        function(reason){
-          fulfilled.reject(reason)
+  then : function(resolveCallback, rejectCallback){
+    var current = this
+    var then = promise.create()
+    var state = map[this.state]
+    if(typeof resolveCallback != "function") {
+      resolveCallback = identity
+    }
+    if(typeof rejectCallback != "function") {
+      rejectCallback = identity
+    }
+    var onResolve = createCallback(
+      current,
+      then,
+      resolveCallback,
+      function(value){
+        then.resolve(value)
+      }
+    )
+    var onReject = createCallback(
+      current,
+      then,
+      rejectCallback,
+      function(value){
+        then.reject(value)
+      }
+    )
+    if(this.state) {
+      asap(function(){
+        if(state == "resolve") {
+          onResolve()
+          return
         }
-      )
-      return fulfilled
+        if(state == "reject") {
+          onReject()
+        }
+      })
+      return then
     }
-    fulfilled.fulfill(value)
-    return fulfilled
+    current.on("resolve", onResolve)
+    current.on("reject", onReject)
+
+    return then
   },
-  createRejected : function(reason){
-    var rejected = promise.create()
-    rejected.reject(reason)
-    return rejected
+  "catch" : function(rejectCallback){
+    return this.then(null, rejectCallback)
   },
-  all : function(array){
+  done : function(callback){
+    return this.then(callback, callback)
+  },
+  all : function(promises){
     var index = -1
-    var length = array.length
-    var results = Array(length)
-    var resultsMap = Array(length)
-    var returnedPromise = promise.create()
-
-    function failAll(reason){
-      returnedPromise.reject(reason)
-    }
-
-    function check(){
-      var length = results.length
-      while(--length > -1) {
-        if(resultsMap[length] !== 1) {
+    var length = promises.length
+    var values = Array(length)
+    var done = Array(length)
+    var then = promise.create()
+    var check = function(){
+      var index = -1
+      while(++index < length) {
+        if(done[index] != true) {
           return
         }
       }
-      returnedPromise.fulfill(results)
+      then.resolve(values)
     }
-
+    var bind = function(index){
+      var item = promises[index]
+      item.then(
+        function(value){
+          values[index] = value
+          done[index] = true
+          check()
+        },
+        function(reason){
+          then.reject(reason)
+        }
+      )
+    }
     while(++index < length) {
-      (function(any, index){
-        promise.from(any)
-          .then(
-            function(value){
-              results[index] = value
-              resultsMap[index] = 1
-              check()
-            },
-            failAll
-          )
-      })(array[index], index)
+      bind(index)
     }
-
-    return returnedPromise
+    check()
+    return then
+  },
+  race : function(promises){
+    var index = -1
+    var length = promises.length
+    var then = promise.create()
+    var item
+    while(++index < length) {
+      item = promises[index]
+      item.then(
+        function(value){
+          then.resolve(value)
+        },
+        function(reason){
+          then.reject(reason)
+        }
+      )
+    }
+    return then
   }
 })
 
-promise["catch"] = function(errorCallback){
-  return this.then(null, errorCallback)
-}
+module.exports = promise
