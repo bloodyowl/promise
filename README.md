@@ -18,36 +18,75 @@ var promise = require("bloody-promise")
 
 ### `promise.create([fn]) -> promise`
 
-Creates a new promise and immediately executes `fn` (asynchronously) with the promise as first argument.
-
-### `promise.from([any]) -> promise`
-
-Creates a new promise based on the given value, or promise. If the argument is a value, promise is fulfilled.
-
-### `promise.createRejected([any]) -> promise`
-
-Creates a new rejected promise with `any` as reason.
+creates a new promise and immediately executes `fn` (asynchronously) with the promise as first argument.
+`fn` has two function arguments, `resolve` and `reject` which set promise state.
 
 ### `promise.then([successCallback][, rejectCallback]) -> new promise`
 
-Adds callbacks to `promise` and returns a new promise based on the return values of callbacks.
+adds callbacks to `promise` and returns a new promise based on the return values of callbacks.
 If a promise is returned from the executed callback, `new promise` will be `fulfilled` or `rejected` when this promise is `fulfilled` or `rejected`.
 
 ### `promise.catch([rejectCallback]) -> new promise`
 
 `.then(null, rejectCallback)` shorthand.
 
-**NOTE** : ES3 environments may require to use a `["catch"]` syntax. 
+**NOTE** : ES3 environments may require to use a `["catch"]` syntax.
 
-### `promise.fulfill([value])`
+### `promise.done(callback) -> new promise`
 
-Fulfills a promise with `value`
+`.then(callback, callback)` shorthand.
+
+### `promise.resolve([value])`
+
+resolves a promise with `value`
 
 ### `promise.reject([reason])`
 
-Rejects a promise with `reason`
+rejects a promise with `reason`
 
 ### `promise.all(array) -> new promise`
 
-Creates a promise resolved when all `array` promises are fulfilled.
-Promises in the array are converted through `promise.from`.
+creates a promise resolved when all `array` promises are fulfilled.
+
+### `promise.reace(array) -> new promise`
+
+gives the returned promise the state of the first done promise in the array.
+
+### events
+
+events can be used using `.on(event, cb)`
+
+- `resolve` : when the promise is resolved
+- `reject` : when the promise is rejected
+- `error` : when an error occured in a `.then` callback
+- `done` : when the promise is resolved or rejected
+
+
+## example
+
+```javascript
+var promise = require("bloody-promise")
+
+function firstClick(){
+  var click = promise.create(function(resolve){
+    document.documentElement.addEventListener("click", onClick, false)
+    function onClick(eventObject){
+      click.resolve({
+        eventObject.pageX,
+        eventObject.pageY,
+      })
+      document.documentElement.removeEventListener("click", onClick, false)
+    }
+  })
+  return click
+}
+
+firstClick()
+  .then(function(coords){
+    console.log("user click on", target)
+    tracking.push(JSON.stringify(coords))
+  })
+  .then(function(){
+    page.initEvents()
+  })
+```

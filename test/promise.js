@@ -1,170 +1,489 @@
 var tape = require("tape")
-  , promise = require("../")
+var promise = require("../")
 
 tape("promise", function(test){
-
-  test.plan(18)
-
-  var z = ""
-    , p = promise.create(function(r){
-        test.equal(z, "1", "Function is executed immediately")
-        test.equal(p, r, "promise is passed to function")
-        r.fulfill(1)
-      })
-
-    p.then(function(value){
-      var p2 = promise.create()
-      test.equal(value, 1, "value is passed")
-      setTimeout(function(){
-        p2.fulfill(2)
-      }, 400)
-      return p2
+  promise
+    .create(function(resolve, reject){
+      test.equal(typeof resolve, "function")
+      test.equal(typeof reject, "function")
+      test.end()
     })
-    .then(function(value){
-      var p3 = promise.create()
-      test.equal(value, 2, "promise passed")
-      p3.reject("foo")
-      return p3
-    })
-    .then(function(){
-      test.fail("shouldn't execute successCallback")
-    }, function(reason){
-      test.equal(reason, "foo", "executes rejectCallback")
-    })
-
-    p.then(function(){
-      var p4 = promise.create()
-      setTimeout(function(){
-        p4.reject(1)
-      })
-      return p4
-    })
-    .then(function(){
-      test.fail("shouldn't execute successCallback")
-    }, function(reason){
-      test.equal(reason, 1, "executes rejectCallback")
-    })
-
-    p.then(function(value){
-      test.equal(value, 1, "multiple callbacks can be pushed")
-      p.reject()
-      test.ok(p.status & p.FULFILLED, "status doesn't change after forced to it")
-      return 1
-    })
-    .then(function(value){
-      test.equal(value, 1, "passes non promise values")
-    })
-    .then(function(){
-      throw "foo"
-    })
-    .then(function(value){
-      test.fail("shouldn't execute successCallback on error")
-    }, function(reason){
-      test.equal(reason, "foo", "should execute rejectCallback on error")
-    })
-
-    p.then(function(){
-      throw "foo"
-    })
-    .then(function(){
-      test.fail("shouldn't execute successCallback on error")
-    }, function(){
-      return 1
-    })
-    .then(function(value){
-      test.equal(value, 1, "should execute successCallback")
-    }, function(reason){
-      test.fail("shouldn't execute rejectCallback")
-    })
-
-    var e = promise.from(p)
-
-    test.notEqual(p, e, "promise.from from promise returns new promise")
-
-    e.then(function(value){
-      test.equal(value, 1, "promise.from from promise gets value")
-    })
-
-    var r = promise.from(1)
-
-      r.then(function(value){
-        test.equal(value, 1, "promise.from from any value has value")
-        test.ok(r.status & r.FULFILLED, "promise.from value is fulfilled")
-      })
-
-    var t = promise.createRejected(2)
-
-      t.then(function(){
-        test.fail("promise.createRejected shouldn't run successCallback")
-      }, function(reason){
-        test.ok(t.status & t.REJECTED, "promise.createRejected is rejected")
-        test.equal(reason, 2, "promise.createRejected gets value as reason")
-      })
-
-      t["catch"](function(reason){
-        test.equal(reason, 2, "catch shorthand")
-      })
-
-  z += "1"
 })
 
-tape("promise log errors", function(test){
-  if(typeof console == "undefined") {
-    test.end()
-  }
-  var warn = console.warn
-  var error = new Error("foo")
-  var thrower = function(val){
-    test.equal(val, 1)
-    throw error
-  }
-  var tester = function(message, reason){
-    test.equal(this, console)
-    test.equal(message, "bloody-promise: error thrown :")
-    test.equal(reason, error)
-    test.end()
-    console.warn = warn
-  }
-  console.warn = tester
+tape("promise fn is optional", function(test){
+  var rand = Math.random()
   var p = promise.create()
-  p.then(thrower)
-  p.fulfill(1)
+  p.then(function(value){
+    test.equal(value, rand, "first value is passed")
+    test.end()
+  })
+  p.resolve(rand)
 })
 
-
-tape("promise.all", function(test){
-
-  test.plan(6)
-
+tape("promise fn is optional (reject)", function(test){
+  var rand = Math.random()
   var p = promise.create()
-    , r = promise.create()
-    , q = promise.create()
-    , all = promise.all([1, p, r, void 0])
-    , allReject = promise.all([q])
+  p.then(
+    null,
+    function(value){
+      test.equal(value, rand, "first value is passed")
+      test.end()
+    }
+  )
+  p.reject(rand)
+})
 
-  p.fulfill(2)
+tape("promise (then)", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+      resolve(Math.random())
+    })
+    .then(function(value){
+      test.equal(value, rand, "first value is passed")
+      test.end()
+    })
+})
 
+tape("promise (then) when resolved", function(test){
+  var rand = Math.random()
+  var p = promise
+    .create(function(resolve, reject){
+      resolve(rand)
+    })
   setTimeout(function(){
-    r.fulfill(3)
-  }, 300)
+    p.then(function(value){
+      test.equal(value, rand, "first value is passed")
+      test.end()
+    })
+  }, 200)
+})
 
-  q.reject("nah")
+tape("promise (then) when rejected", function(test){
+  var rand = Math.random()
+  var p = promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+  setTimeout(function(){
+    p.then(
+      null,
+      function(value){
+        test.equal(value, rand, "first value is passed")
+        test.end()
+      }
+    )
+  }, 200)
+})
 
-  all.then(function(array){
-    test.equal(array[0], 1, "converts values to promises")
-    test.equal(array[1], 2, "binds to promises")
-    test.equal(array[2], 3, "binds to promises")
-    test.equal(array[3], void 0, "binds to promises")
-    test.equal(array.length, 4, "binds to promises")
-  }, function(){
-    test.fail("shouldn't run rejectCallback")
-  })
+tape("promise (then) when errored", function(test){
+  var rand = Math.random()
+  var p = promise
+    .create(function(resolve, reject){
+      resolve(1)
+    })
+    .then(function(){
+      throw rand
+    })
+  setTimeout(function(){
+    p.then(
+      null,
+      function(reason){
+        test.equal(reason, rand, "first value is passed")
+        test.end()
+      }
+    )
+  }, 200)
+})
 
-  allReject.then(function(){
-    test.fail("shouldn't run successCallback")
-  },function(reason){
-    test.equal(reason, "nah", "runs rejectCallback")
-  })
+tape("promise (err)", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+      throw "error"
+    })
+    .then(function(value){
+      test.equal(value, rand, "first value is passed when error is thrown")
+      test.end()
+    })
+})
 
+tape("promise (reject)", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .then(null, function(reason){
+      test.equal(reason, rand, "reason is passed")
+      test.end()
+    })
+})
 
+tape("promise only execute one type of callbacks", function(test){
+  test.plan(1)
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+      reject(rand)
+    })
+    .then(
+      function(value){
+        test.equal(value, rand, "one callback")
+      },
+      function(){
+        test.fail()
+      }
+    )
+})
+
+tape("promise only execute one type of callbacks (reject)", function(test){
+  test.plan(1)
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+      resolve(rand)
+    })
+    .then(
+      function(){
+        test.fail()
+      },
+      function(reason){
+        test.equal(reason, rand, "one callback")
+      }
+    )
+})
+
+tape("promise delegates state if nothing is passed", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+    })
+    .then()
+    .then(function(value){
+      test.equal(value, rand, "delegated")
+      test.end()
+    })
+})
+
+tape("promise delegates state if nothing is passed (reject)", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .then()
+    .then(
+      null,
+      function(reason){
+        test.equal(reason, rand, "delegated")
+        test.end()
+      }
+    )
+})
+
+tape("promise done method", function(test){
+  test.plan(2)
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .done(function(value){
+      test.equal(value, rand, "value passed (reject)")
+    })
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+    })
+    .done(function(value){
+      test.equal(value, rand, "value passed")
+    })
+})
+
+tape("promise binds .then promise to return promise if returned", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+    })
+    .then(function(value){
+      var p = promise.create()
+      setTimeout(function(){
+        p.resolve(value * 2)
+      }, 50)
+      return p
+    })
+    .then(function(value){
+      test.equal(value, rand * 2, "bound")
+      test.end()
+    })
+})
+
+tape("promise binds .then promise to return promise state", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+    })
+    .then(function(value){
+      var p = promise.create()
+      setTimeout(function(){
+        p.reject(value * 2)
+      }, 50)
+      return p
+    })
+    .then(null,
+      function(reason){
+        test.equal(reason, rand * 2, "bound")
+        test.end()
+      }
+    )
+})
+
+tape("promise binds .then promise to return promise state (reject)", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .then(
+      null,
+      function(value){
+        var p = promise.create()
+        setTimeout(function(){
+          p.resolve(value * 2)
+        }, 50)
+        return p
+      }
+    )
+    .then(
+      function(value){
+        test.equal(value, rand * 2, "bound")
+        test.end()
+      }
+    )
+})
+
+tape("promise erros in .then callbacks", function(test){
+  var rand = String(Math.random())
+  promise
+    .create(function(resolve, reject){
+      resolve(1)
+    })
+    .then(function(value){
+      throw rand
+    })
+    .then(
+      null,
+      function(reason){
+        test.equal(reason, rand, "rejects if errored")
+        test.end()
+      }
+    )
+})
+
+tape("promise erros in .then callbacks (reject)", function(test){
+  var rand = String(Math.random())
+  promise
+    .create(function(resolve, reject){
+      reject(1)
+    })
+    .then(
+      null,
+      function(value){
+        throw rand
+      }
+    )
+    .then(
+      null,
+      function(reason){
+        test.equal(reason, rand, "rejects if errored")
+        test.end()
+      }
+    )
+})
+
+tape("promise resolve event", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+    })
+    .on("resolve", function(value){
+      test.equal(value, rand, "passed to event")
+      test.end()
+    })
+})
+
+tape("promise reject event", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .on("reject", function(value){
+      test.equal(value, rand, "passed to event")
+      test.end()
+    })
+})
+
+tape("promise done event", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      resolve(rand)
+    })
+    .on("done", function(value){
+      test.equal(value, rand, "passed to event")
+      test.end()
+    })
+})
+
+tape("promise done event (reject)", function(test){
+  var rand = Math.random()
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .on("done", function(value){
+      test.equal(value, rand, "passed to event")
+      test.end()
+    })
+})
+
+tape("promise error event", function(test){
+  var rand = String(Math.random())
+  promise
+    .create(function(resolve, reject){
+      resolve(1)
+    })
+    .then(function(){
+      throw rand
+    })
+    .on("error", function(err){
+      test.equal(err, rand, "passed to event")
+      test.end()
+    })
+})
+
+tape("promise .catch method", function(test){
+  var rand = String(Math.random())
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    ["catch"](function(reason){
+      test.equal(reason, rand, "passed to event")
+      test.end()
+    })
+})
+
+tape("promise all", function(test){
+  var rands = [
+    Math.random(),
+    Math.random(),
+    Math.random()
+  ]
+  var promises = [
+    promise.create(function(resolve){
+      resolve(rands[0])
+    }),
+    promise.create(function(resolve){
+      resolve(rands[1])
+    }),
+    promise.create(function(resolve){
+      setTimeout(function(){
+        resolve(rands[2])
+      }, 50)
+    })
+  ]
+  promise.all(promises)
+    .then(function(values){
+      test.deepEqual(values, rands)
+      test.end()
+    })
+})
+
+tape("promise all (reject)", function(test){
+  var rands = [
+    Math.random(),
+    Math.random(),
+    Math.random()
+  ]
+  var promises = [
+    promise.create(function(resolve){
+      resolve(rands[0])
+    }),
+    promise.create(function(resolve){
+      resolve(rands[1])
+    }),
+    promise.create(function(resolve, reject){
+      setTimeout(function(){
+        reject(rands[2])
+      }, 50)
+    })
+  ]
+  promise.all(promises)
+    .then(
+      null,
+      function(reason){
+        test.equal(reason, rands[2])
+        test.end()
+      }
+    )
+})
+
+tape("promise race", function(test){
+  var rands = [
+    Math.random(),
+    Math.random(),
+  ]
+  var promises = [
+    promise.create(function(resolve){
+      resolve(rands[0])
+    }),
+    promise.create(function(resolve, reject){
+      setTimeout(function(){
+        resolve(rands[1])
+      }, 50)
+    })
+  ]
+  promise.race(promises)
+    .then(
+      function(value){
+        test.equal(value, rands[0])
+        test.end()
+      }
+    )
+})
+
+tape("promise race (reject)", function(test){
+  var rands = [
+    Math.random(),
+    Math.random(),
+  ]
+  var promises = [
+    promise.create(function(resolve, reject){
+      reject(rands[0])
+    }),
+    promise.create(function(resolve, reject){
+      setTimeout(function(){
+        resolve(rands[1])
+      }, 50)
+    })
+  ]
+  promise.race(promises)
+    .then(
+      null,
+      function(reason){
+        test.equal(reason, rands[0])
+        test.end()
+      }
+    )
 })
