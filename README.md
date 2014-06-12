@@ -48,7 +48,7 @@ rejects a promise with `reason`
 
 creates a promise resolved when all `array` promises are fulfilled.
 
-### `promise.reace(array) -> new promise`
+### `promise.race(array) -> new promise`
 
 gives the returned promise the state of the first done promise in the array.
 
