@@ -25,7 +25,11 @@ var createCallback = function(current, then, fn, cb){
         value.then(then.accessor("resolve"), then.accessor("reject"))
         return
       }
-      cb(value)
+      if(fn === identity) {
+        cb(value)
+      } else {
+        then.accessor("resolve")(value)
+      }
     })
   }
 }
