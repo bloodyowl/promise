@@ -384,6 +384,58 @@ tape("promise .catch method", function(test){
     })
 })
 
+tape("promise doesn't pass state from reject if it succeeded", function(test){
+  var rand = String(Math.random())
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .then(
+      function(){
+        test.fail()
+      },
+      function(reason){
+        test.equal(reason, rand)
+        return reason
+      }
+    )
+    .then(
+      function(value){
+        test.equal(value, rand)
+        test.end()
+      },
+      function(){
+        test.fail()
+      }
+    )
+})
+
+tape("promise doesn't pass state from reject if it succeeded", function(test){
+  var rand = new Error(String(Math.random()))
+  promise
+    .create(function(resolve, reject){
+      reject(rand)
+    })
+    .then(
+      function(){
+        test.fail()
+      },
+      function(reason){
+        test.equal(reason, rand)
+        throw rand
+      }
+    )
+    .then(
+      function(){
+        test.fail()
+      },
+      function(reason){
+        test.equal(reason, rand)
+        test.end()
+      }
+    )
+})
+
 tape("promise all", function(test){
   var rands = [
     Math.random(),
