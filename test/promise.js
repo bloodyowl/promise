@@ -462,6 +462,35 @@ tape("promise all", function(test){
     })
 })
 
+tape("promise all doens't emit `done` twice", function(test){
+  var rands = [
+    Math.random(),
+    Math.random(),
+    Math.random()
+  ]
+  var index = -1
+  var promises = [
+    promise.create(function(resolve){
+      resolve(rands[0])
+    }),
+    promise.create(function(resolve){
+      resolve(rands[1])
+    }),
+    promise.create(function(resolve){
+      setTimeout(function(){
+        resolve(rands[2])
+      }, 50)
+    })
+  ]
+  promise.all(promises)
+    .on("done", function(){
+      test.equal(++index < 1, true)
+    })
+  setTimeout(function(){
+    test.end()
+  }, 300)
+})
+
 tape("promise all (reject)", function(test){
   var rands = [
     Math.random(),

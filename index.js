@@ -80,7 +80,6 @@ var promise = events.extend({
     }
     current.value = value
     current.emit("resolve", value)
-    current.emit("done", value)
   },
   reject : function(reason){
     var current = this
@@ -89,7 +88,6 @@ var promise = events.extend({
     }
     current.value = reason
     current.emit("reject", reason)
-    current.emit("done", reason)
   },
   then : function(resolveCallback, rejectCallback){
     var current = this
